@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+      </head>
+<body class="container">
+
+  <br>
+  <h2>server updates <span class="status"></span></h2>
+
+  <!--NavBar-->
+
+<nav>
+  <div class="nav nav-tabs" id="nav-tab" role="tablist">
+    <button class="nav-link active" id="nav-dashboard-tab" data-bs-toggle="tab" data-bs-target="#nav-dashboard" type="button" role="tab" aria-controls="nav-dashboard" aria-selected="true">Dashboard</button>
+    <button class="nav-link" id="nav-logs-tab" data-bs-toggle="tab" data-bs-target="#nav-logs" type="button" role="tab" aria-controls="nav-logs" aria-selected="false">logs</button>
+  </div>
+</nav>
+
+
+<div class="tab-content" id="nav-tabContent">
+
+  <!--Dashboard Tab-->
+
+  <div class="tab-pane fade show active" id="nav-dashboard" role="tabpanel" aria-labelledby="nav-dashboard-tab">
+    
+    <br>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">workername</th>
+            <th scope="col">benchmark</th>
+            <th scope="col">status</th>
+            <th scope="col">range</th>
+            <th scope="col">timestamp</th>
+          </tr>
+        </thead>
+        <tbody class="table-body">
+        </tbody>
+      </table>
+    </div>
+    <!--file jobs table-->
+    <!--filepath,status,assigned-->
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Location</th>
+            <th scope="col">Status</th>
+            <th scope="col">Assigned to</th>
+          </tr>
+        </thead>
+        <tbody class="table-body-files">
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+  
+  <!--Logs Tab-->
+  <div class="tab-pane fade" id="nav-logs" role="tabpanel" aria-labelledby="nav-logs-tab">
+    nav-logs tab
+  </div>
+
+</div>
+
+
+
+
+
+
+
+<!----------scripts start here----------------------------->
+
+<script src="https://code.jquery.com/jquery-3.6.0.slim.min.js" integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI=" crossorigin="anonymous"></script>
+<script>
+$(()=>{
+    if(typeof(EventSource) !== "undefined") {
+  var source = new EventSource("/web_update");
+    
+  source.onmessage = function(event) {
+
+    $('.status').text('Online');
+    $('.status').removeClass('badge rounded-pill bg-danger');
+    $('.status').addClass('badge rounded-pill bg-success');
+
+    
+
+    str = event.data.replace(/\'/g, '"');
+    var parsed = JSON.parse(str);
+    //console.log(parsed);
+    
+    var rows = [];
+    parsed.forEach(element => {
+
+        var name = element['name'];
+        var hashrate = element['hashrate'];
+        var status = element['status'];
+        var range = element['range'];
+        var timestamp = element['timestamp'];
+
+
+        var att = `<tr class='worker-profile'>
+                    <th scope="row">${name}</th>
+                    <td>${hashrate}</td>`+ 
+                    (status === 'running' 
+                    ? `<th class='text-success'>${status}</th>`
+                    : `<th class='text-danger'>${status}</th>`)
+                    + `<td>${range}</td>
+                    <td>${timestamp}</td>
+                    </tr>`;
+        rows.push(att);
+    }); 
+    $('.table-body').empty();
+    rows.forEach(ele => {
+        $('.table-body').append(ele);
+    });
+    
+  };
+
+  source.onerror = function(e) {
+    $('.status').text('Offline');
+    $('.status').removeClass('badge rounded-pill bg-success');
+    $('.status').addClass('badge rounded-pill bg-danger');
+
+    log("Event: error");
+    if (this.readyState == EventSource.CONNECTING) {
+      log(`Reconnecting (readyState=${this.readyState})...`);
+    } else {
+      log("Error has occured.");
+    }
+  };
+} else {
+  document.getElementById("result").innerHTML = "Sorry, your browser does not support server-sent events...";
+}
+});
+</script>
+<!--files script-->
+<script>
+  $(()=>{
+      if(typeof(EventSource) !== "undefined") {
+    var source = new EventSource("/web_update_filemanager");
+      
+    source.onmessage = function(event) {
+  
+      str = event.data.replace(/\'/g, '"');
+      var parsed = JSON.parse(str);
+      //console.log(parsed);
+      
+      var rows = [];
+      parsed.forEach(element => {
+  
+          var filepath = element['filepath'];
+          var status = element['status'];
+          var assigned = element['assigned'];
+  
+          var att = `<tr class='worker-profile'>
+                      <th scope="row">${filepath}</th>` +
+                      (status === 'failed' 
+                      ? `<th class='text-success'>${status}</th>`
+                      : `<th class='text-danger'>${status}</th>`)
+                      + `<td>${assigned}</td>
+                      </tr>`;
+          rows.push(att);
+      }); 
+      $('.table-body-files').empty();
+      rows.forEach(ele => {
+          $('.table-body-files').append(ele);
+      });
+      
+    };
+  
+    source.onerror = function(e) {
+
+      log("Event: error");
+      if (this.readyState == EventSource.CONNECTING) {
+        log(`Reconnecting (readyState=${this.readyState})...`);
+      } else {
+        log("Error has occured.");
+      }
+    };
+  } else {
+    document.getElementById("result").innerHTML = "Sorry, your browser does not support server-sent events...";
+  }
+  });
+  </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+
+
+
+</body>
+</html>
